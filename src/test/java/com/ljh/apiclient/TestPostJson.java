@@ -49,7 +49,7 @@ public class TestPostJson {
 
             System.out.println("原始请求为:\n\n"+obj.toString()+"\n\n");
 
-            String request=new RequestHandler().encRequest(obj.toString());
+            String request=new RequestHandler().encRequest(obj.toString(),"server cert","clientsignkey");
             System.out.println("修改请求为:\n\n"+request+"\n\n");
             httppost.setEntity(new StringEntity(request));
 
