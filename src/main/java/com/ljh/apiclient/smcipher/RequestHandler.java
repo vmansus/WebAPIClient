@@ -43,13 +43,24 @@ public class RequestHandler {
         BufferedReader bufferedReader=new BufferedReader(new FileReader("D:\\githuba\\apiclient\\src\\main\\resources\\application.properties"));
         properties.load(bufferedReader);
         int mode= Integer.parseInt(properties.getProperty("workmode"));
+        int isWhole= Integer.parseInt(properties.getProperty("isWhole"));
 
-        if(mode==0){
-            requestBody= JsonUtils.getInstance(cert).jsonEncrypt(requestBody,keyname,signkey);
-        }else if(mode==1){
-            requestBody= JsonUtils.getInstance(cert).jsonEncryptmode1(requestBody,keyname,signkey);
-        }else if(mode==2){
-            requestBody= JsonUtils.getInstance(cert).jsonEncryptmode2(requestBody,keyname,signkey);
+        if (isWhole==0){
+            if(mode==0){
+                requestBody= JsonUtils.getInstance(cert).jsonEncrypt(requestBody,keyname,signkey);
+            }else if(mode==1){
+                requestBody= JsonUtils.getInstance(cert).jsonEncryptmode1(requestBody,keyname,signkey);
+            }else if(mode==2){
+                requestBody= JsonUtils.getInstance(cert).jsonEncryptmode2(requestBody,keyname,signkey);
+            }
+        }else if(isWhole==1){
+            if(mode==0){
+                requestBody= JsonAsWholeEncUtils.getInstance(cert).jsonEncrypt(requestBody,keyname,signkey);
+            }else if(mode==1){
+                requestBody= JsonAsWholeEncUtils.getInstance(cert).jsonEncrypt1(requestBody,keyname,signkey);
+            }else if(mode==2){
+                requestBody= JsonAsWholeEncUtils.getInstance(cert).jsonEncrypt2(requestBody,keyname,signkey);
+            }
         }
 
         return requestBody;
@@ -62,13 +73,26 @@ public class RequestHandler {
         BufferedReader bufferedReader=new BufferedReader(new FileReader("D:\\githuba\\apiclient\\src\\main\\resources\\application.properties"));
         properties.load(bufferedReader);
         int mode= Integer.parseInt(properties.getProperty("workmode"));
-        if(mode==0){
-            responseBody= new JsonDecryptUtils().jsonDecrypt(responseBody);
-        }else if(mode==1){
-            responseBody= new JsonDecryptUtils().jsonDecryptmode1(responseBody);
-        }else if(mode==2){
-            responseBody= new JsonDecryptUtils().jsonDecryptmode2(responseBody);
+        int isWhole= Integer.parseInt(properties.getProperty("isWhole"));
+
+        if (isWhole==0){
+            if(mode==0){
+                responseBody= new JsonDecryptUtils().jsonDecrypt(responseBody);
+            }else if(mode==1){
+                responseBody= new JsonDecryptUtils().jsonDecryptmode1(responseBody);
+            }else if(mode==2){
+                responseBody= new JsonDecryptUtils().jsonDecryptmode2(responseBody);
+            }
+        }else if(isWhole==1){
+            if(mode==0){
+                responseBody= new JsonAsWholeDecUtils().jsonDecrypt(responseBody);
+            }else if(mode==1){
+                responseBody= new JsonAsWholeDecUtils().jsonDecrypt1(responseBody);
+            }else if(mode==2){
+                responseBody= new JsonAsWholeDecUtils().jsonDecrypt2(responseBody);
+            }
         }
+
 
         return responseBody;
     }

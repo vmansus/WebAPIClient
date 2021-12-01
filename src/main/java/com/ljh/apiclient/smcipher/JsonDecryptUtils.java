@@ -6,12 +6,14 @@ import com.alibaba.fastjson.JSONValidator;
 import com.alibaba.fastjson.serializer.SerializerFeature;
 import com.ljh.apiclient.gmhelper.SM2Util;
 import com.ljh.apiclient.gmhelper.SM4Util;
+import com.ljh.apiclient.gmhelper.cert.SM2CertUtil;
 import com.ljh.apiclient.gmhelper.cert.SM2X509CertMaker;
 import lombok.var;
 import org.apache.commons.lang.StringEscapeUtils;
 import org.apache.commons.lang.StringUtils;
 import org.bouncycastle.crypto.InvalidCipherTextException;
 import org.bouncycastle.jcajce.provider.asymmetric.ec.BCECPrivateKey;
+import org.bouncycastle.jcajce.provider.asymmetric.ec.BCECPublicKey;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.springframework.stereotype.Component;
 
@@ -25,9 +27,8 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.security.*;
+import java.security.cert.*;
 import java.security.cert.Certificate;
-import java.security.cert.CertificateFactory;
-import java.security.cert.X509Certificate;
 import java.util.*;
 
 @Component
@@ -107,22 +108,41 @@ public class JsonDecryptUtils {
         try {
             if (!StringUtils.isBlank(json)) {
                 JSONObject jsonObject = JSON.parseObject(json);
-                String encryptkey=jsonObject.getString("encryptkey");
+                String encryptkey=jsonObject.getString("Encrypted_Key");
                 String KeyName=jsonObject.getString("KeyName");
 
-                String certString=jsonObject.getString("Cert");
-                byte[] certbcytes=Base64.getDecoder().decode(stringToBytes(certString));
-                CertificateFactory certFactory = CertificateFactory.getInstance("X.509");
-                java.security.cert.Certificate cert = certFactory.generateCertificate(new ByteArrayInputStream(certbcytes));
-                X509Certificate x509Certificate= (X509Certificate) cert;
+                JSONObject certObject=jsonObject.getJSONObject("Certs");
+                Iterator certiter = certObject.entrySet().iterator();
+                X509Certificate[] chain=new X509Certificate[certObject.size()];
+                int j=0;
+                while(certiter.hasNext()){
+                    Map.Entry entry = (Map.Entry) certiter.next();
+                    CertificateFactory certFactory = CertificateFactory.getInstance("X.509");
+                    byte[] certbcytes=Base64.getDecoder().decode(stringToBytes(entry.getValue().toString()));
+                    Certificate cert = certFactory.generateCertificate(new ByteArrayInputStream(certbcytes));
+                    chain[j]=(X509Certificate) cert;
+                    j++;
+                }
+                List<X509Certificate> certificates=Arrays.asList(chain);
+                Certificate[] sortedChain=new Certificate[certificates.size()];
+                X509Certificate rootCert=findRootCert(certificates);
+                X509Certificate nextCert=rootCert;
+                for (int p=certificates.size()-1;p>=0;p--){
+                    sortedChain[p]=nextCert;
+                    nextCert=findSignedCert(nextCert,certificates);
+                }
+
+                Boolean certStatus=checkCertChain(sortedChain);
+                if (!certStatus){
+                    System.out.println("证书链验证失败!!!");
+                }
+                final X509Certificate x509Certificate=(X509Certificate)sortedChain[0];
+
 
                 PrivateKey privateKey=getPrivateKey(KeyName);
-
-
-
                 Map<Object,Object>  signature= (Map<Object, Object>) jsonObject.get("Signature");
                 jsonObject.remove("Signature");
-                jsonObject.remove("Cert");
+                jsonObject.remove("Certs");
                 String json1=jsonObject.toJSONString();
                 // 使用SM2算法将随机生成的SM4key解密
                 byte[] thekey = null;
@@ -137,7 +157,7 @@ public class JsonDecryptUtils {
 //                    System.out.println(encryptNodeMap.get(key));
                     Object output = GetAesJToken(JSON.parseObject(json1.trim()), encryptNodeMap.get(key));
                     JSONObject jsonObject1 =  (JSONObject) JSON.toJSON(output);
-                    jsonObject1.remove("encryptkey");
+                    jsonObject1.remove("Encrypted_Key");
                     jsonObject1.remove("KeyName");
                     String result=JSONObject.toJSONString(jsonObject1, SerializerFeature.SortField.MapSortField,SerializerFeature.DisableCheckSpecialChar);
 
@@ -189,7 +209,7 @@ public class JsonDecryptUtils {
         try {
             if (!StringUtils.isBlank(json)) {
                 JSONObject jsonObject = JSON.parseObject(json);
-                String encryptkey=jsonObject.getString("encryptkey");
+                String encryptkey=jsonObject.getString("Encrypted_Key");
                 String KeyName=jsonObject.getString("KeyName");
                 PrivateKey privateKey=getPrivateKey(KeyName);
                 String json1=jsonObject.toJSONString();
@@ -206,7 +226,7 @@ public class JsonDecryptUtils {
 //                    System.out.println(encryptNodeMap.get(key));
                     Object output = GetAesJToken(JSON.parseObject(json1.trim()), encryptNodeMap.get(key));
                     JSONObject jsonObject1 =  (JSONObject) JSON.toJSON(output);
-                    jsonObject1.remove("encryptkey");
+                    jsonObject1.remove("Encrypted_Key");
                     jsonObject1.remove("KeyName");
                     String result=JSONObject.toJSONString(jsonObject1, SerializerFeature.SortField.MapSortField,SerializerFeature.DisableCheckSpecialChar);
 
@@ -244,16 +264,37 @@ public class JsonDecryptUtils {
             if (!StringUtils.isBlank(json)) {
                 JSONObject jsonObject = JSON.parseObject(json);
 
-                String certString=jsonObject.getString("Cert");
-                byte[] certbcytes=Base64.getDecoder().decode(stringToBytes(certString));
-                CertificateFactory certFactory = CertificateFactory.getInstance("X.509");
-                Certificate cert = certFactory.generateCertificate(new ByteArrayInputStream(certbcytes));
-                X509Certificate x509Certificate= (X509Certificate) cert;
+                JSONObject certObject=jsonObject.getJSONObject("Certs");
+                Iterator certiter = certObject.entrySet().iterator();
+                X509Certificate[] chain=new X509Certificate[certObject.size()];
+                int j=0;
+                while(certiter.hasNext()){
+                    Map.Entry entry = (Map.Entry) certiter.next();
+                    CertificateFactory certFactory = CertificateFactory.getInstance("X.509");
+                    byte[] certbcytes=Base64.getDecoder().decode(stringToBytes(entry.getValue().toString()));
+                    Certificate cert = certFactory.generateCertificate(new ByteArrayInputStream(certbcytes));
+                    chain[j]=(X509Certificate) cert;
+                    j++;
+                }
+                List<X509Certificate> certificates=Arrays.asList(chain);
+                Certificate[] sortedChain=new Certificate[certificates.size()];
+                X509Certificate rootCert=findRootCert(certificates);
+                X509Certificate nextCert=rootCert;
+                for (int p=certificates.size()-1;p>=0;p--){
+                    sortedChain[p]=nextCert;
+                    nextCert=findSignedCert(nextCert,certificates);
+                }
+
+                Boolean certStatus=checkCertChain(sortedChain);
+                if (!certStatus){
+                    System.out.println("证书链验证失败!!!");
+                }
+                final X509Certificate x509Certificate=(X509Certificate)sortedChain[0];
 
 //                String encryptkey=jsonObject.getString("encryptkey");
                 Map<Object,Object>  signature= (Map<Object, Object>) jsonObject.get("Signature");
                 jsonObject.remove("Signature");
-                jsonObject.remove("Cert");
+                jsonObject.remove("Certs");
 //                jsonObject.remove("encryptkey");
 //                jsonStr=jsonObject.toJSONString();
                 // 使用SM2算法将随机生成的SM4key解密
@@ -585,5 +626,74 @@ public class JsonDecryptUtils {
             e.printStackTrace();
         }
         return null;
+    }
+
+    private static X509Certificate findSignedCert(X509Certificate signingCert, List<X509Certificate> certificates)
+    {
+        X509Certificate signed = null;
+        for (X509Certificate cert : certificates)
+        {
+            Principal signingCertSubjectDN = signingCert.getSubjectDN();
+            Principal certIssuerDN = cert.getIssuerDN();
+            if (certIssuerDN.equals(signingCertSubjectDN) && !cert.equals(signingCert))
+            {
+                signed = cert;
+                break;
+            }
+        }
+        return signed;
+    }
+
+
+    private static X509Certificate findSignerCertificate(X509Certificate signedCert, List<X509Certificate> certificates) {
+        X509Certificate signer = null;
+        for (X509Certificate cert : certificates) {
+            Principal certSubjectDN = cert.getSubjectDN();
+            Principal issuerDN = signedCert.getIssuerDN();
+            if (certSubjectDN.equals(issuerDN)) {
+                signer = cert;
+                break;
+            }
+        }
+        return signer;
+    }
+
+    private static X509Certificate findRootCert(List<X509Certificate> certificates) {
+        X509Certificate rootCert = null;
+        for (X509Certificate cert : certificates) {
+            X509Certificate signer = findSignerCertificate(cert, certificates);
+            if (signer == null || signer.equals(cert)) {
+                rootCert = cert;
+                break;
+            }
+        }
+        return rootCert;
+    }
+
+    private static boolean checkCertChain(Certificate[] sortedchain) throws CertificateNotYetValidException, CertificateExpiredException {
+        Boolean isValidCertChain=true;
+        for (int j=0;j<sortedchain.length;j++){
+            X509Certificate cert= (X509Certificate) sortedchain[j];
+            cert.checkValidity();
+            if (!(cert.getNotBefore().getTime()<System.currentTimeMillis()&&System.currentTimeMillis()<cert.getNotAfter().getTime())){
+                System.out.println(cert.getSubjectDN()+"证书过期!!!");
+            }
+
+            if(j< sortedchain.length-1){
+                X509Certificate nextcert1=(X509Certificate) sortedchain[j+1];
+                BCECPublicKey bcRootPub = SM2CertUtil.getBCECPublicKey(nextcert1);
+                if (!SM2CertUtil.verifyCertificate(bcRootPub, cert)){
+                    isValidCertChain=false;
+                }
+
+            }else if(j==sortedchain.length-1){
+                X509Certificate nextcert1=(X509Certificate) sortedchain[j];
+                BCECPublicKey bcRootPub = SM2CertUtil.getBCECPublicKey(nextcert1);
+                if (!SM2CertUtil.verifyCertificate(bcRootPub, cert)){
+                    isValidCertChain=false;
+                }
+            }
+        }
+        return isValidCertChain;
     }
 }

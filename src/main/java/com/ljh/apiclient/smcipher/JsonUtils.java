@@ -127,10 +127,15 @@ public class JsonUtils {
                         e.printStackTrace();
                     }
                     JSONObject jsonObject = JSON.parseObject(output);
-                    jsonObject.put("encryptkey",encryptkey);
+                    jsonObject.put("Encrypted_Key",encryptkey);
                     jsonObject.put("KeyName",keyname);
-                    X509Certificate cert= (X509Certificate) getCerts(alias)[0];
-                    jsonObject.put("Cert",bytesToString(Base64.getEncoder().encode(cert.getEncoded())));
+                    JSONObject jsonChainCert=new JSONObject();
+                    for (int i=0;i<getCerts(alias).length;i++){
+                        jsonChainCert.put(String.valueOf(i),bytesToString(Base64.getEncoder().encode(getCerts(alias)[i].getEncoded())));
+                    }
+//                    X509Certificate cert= (X509Certificate) getCerts(alias)[0];
+                    jsonObject.put("Certs",jsonChainCert);
+
                     String result=JSONObject.toJSONString(jsonObject, SerializerFeature.SortField.MapSortField);
 //                    System.out.println(result);
                     //1、迭代器
@@ -172,7 +177,7 @@ public class JsonUtils {
                         e.printStackTrace();
                     }
                     JSONObject jsonObject = JSON.parseObject(output);
-                    jsonObject.put("encryptkey",encryptkey);
+                    jsonObject.put("Encrypted_Key",encryptkey);
                     jsonObject.put("KeyName",keyname);
                     String result=JSONObject.toJSONString(jsonObject, SerializerFeature.SortField.MapSortField);
 
@@ -208,8 +213,13 @@ public class JsonUtils {
                         e.printStackTrace();
                     }
                     JSONObject jsonObject = JSON.parseObject(json);
-                    X509Certificate cert= (X509Certificate) getCerts(alias)[0];
-                    jsonObject.put("Cert",bytesToString(Base64.getEncoder().encode(cert.getEncoded())));
+                    JSONObject jsonChainCert=new JSONObject();
+                    for (int i=0;i<getCerts(alias).length;i++){
+                        jsonChainCert.put(String.valueOf(i),bytesToString(Base64.getEncoder().encode(getCerts(alias)[i].getEncoded())));
+                    }
+                    jsonObject.put("Certs",jsonChainCert);
+//                    X509Certificate cert= (X509Certificate) getCerts(alias)[0];
+//                    jsonObject.put("Cert",bytesToString(Base64.getEncoder().encode(cert.getEncoded())));
 //                    jsonObject.put("encryptkey",encryptkey);
                     String result=JSONObject.toJSONString(jsonObject, SerializerFeature.SortField.MapSortField);
 //                    System.out.println(result);
