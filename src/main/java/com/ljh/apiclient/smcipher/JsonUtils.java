@@ -4,9 +4,12 @@ import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.JSONValidator;
 import com.alibaba.fastjson.serializer.SerializerFeature;
+import com.ljh.apiclient.configeditor.CryptoConfigUtils;
 import com.ljh.apiclient.gmhelper.SM2Util;
 import com.ljh.apiclient.gmhelper.SM4Util;
 import com.ljh.apiclient.gmhelper.cert.SM2X509CertMaker;
+import com.ljh.apiclient.streamcipher.BCZuc;
+import com.ljh.apiclient.streamcipher.RandomZucKeyGenerater;
 import lombok.var;
 import org.apache.commons.lang.StringUtils;
 import org.bouncycastle.crypto.InvalidCipherTextException;
@@ -19,6 +22,7 @@ import org.springframework.stereotype.Component;
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.nio.file.Files;
@@ -41,7 +45,7 @@ public class JsonUtils {
     private static JsonUtils instance=null;
     private Key keyEncryptKey=null;
 
-    public JsonUtils(X509Certificate certificate) throws NoSuchProviderException, NoSuchAlgorithmException {
+    public JsonUtils(X509Certificate certificate) throws NoSuchProviderException, NoSuchAlgorithmException, IOException {
         keyEncryptKey=certificate.getPublicKey();
     }
 
@@ -50,9 +54,10 @@ public class JsonUtils {
         else return instance;
     }
 
-
+    CryptoConfigUtils cryptoConfigUtils=new CryptoConfigUtils();
+    int encalg=cryptoConfigUtils.getEncAlg();
     byte[] sm4key=SM4Util.generateKey();
-
+    String zuckey=new RandomZucKeyGenerater().makeKey();;
 
 
 
@@ -61,12 +66,22 @@ public class JsonUtils {
     Map<String, List<String>> signNodeMap=nodeMap.resignNodeMap();
     public Map<String, Object> signedmap=new HashMap<>();
 
-    public String stringEncrypt(String text) throws NoSuchPaddingException, InvalidAlgorithmParameterException, NoSuchAlgorithmException, IllegalBlockSizeException, BadPaddingException, NoSuchProviderException, InvalidKeyException {
-        byte[] iv=Base64.getDecoder().decode(stringToBytes("LvbTKayS1A2NFFBjaPvkJg=="));
-        byte[] srcdata=text.getBytes();
-        byte[] cipherText= SM4Util.encrypt_CBC_Padding(sm4key,iv,srcdata);
-        String ss=bytesToString(Base64.getEncoder().encode(cipherText));
-        return ss;
+
+    public String stringEncrypt(String text) throws NoSuchPaddingException, InvalidAlgorithmParameterException, NoSuchAlgorithmException, IllegalBlockSizeException, BadPaddingException, NoSuchProviderException, InvalidKeyException, UnsupportedEncodingException {
+        if (encalg==0){
+            byte[] iv=Base64.getDecoder().decode(stringToBytes("LvbTKayS1A2NFFBjaPvkJg=="));
+            byte[] srcdata=text.getBytes();
+            byte[] cipherText= SM4Util.encrypt_CBC_Padding(sm4key,iv,srcdata);
+            String ss=bytesToString(Base64.getEncoder().encode(cipherText));
+            return ss;
+        }else if(encalg==1){
+            String res=new BCZuc().stringEncCipher(text,zuckey);
+            return res;
+        }else {
+            System.out.println("请检查对称加密配置!!!");
+            return null;
+        }
+
     }
 
     public String stringSign(String text, String alias) throws Exception {
@@ -122,7 +137,16 @@ public class JsonUtils {
                     Map<String, Object> signature =this.signedmap;
                     String encryptkey = null;
                     try {
-                        encryptkey = Sm2Enc(sm4key,keyEncryptKey);
+                        if (encalg == 0) {
+                            encryptkey = Sm2Enc(sm4key,keyEncryptKey);
+                        }else if(encalg==1){
+                            byte[] zuckeybytes=stringToBytes(zuckey);
+                            encryptkey=Sm2Enc(zuckeybytes,keyEncryptKey);
+                        }else {
+                            System.out.println("请检查对称加密配置!!!");
+                        }
+
+
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
@@ -172,7 +196,14 @@ public class JsonUtils {
                     String  output = GetAesJToken(JSON.parseObject(json.trim()), encryptNodeMap.get(key)).toString();
                     String encryptkey = null;
                     try {
-                        encryptkey = Sm2Enc(sm4key,keyEncryptKey);
+                        if (encalg == 0) {
+                            encryptkey = Sm2Enc(sm4key,keyEncryptKey);
+                        }else if(encalg==1){
+                            byte[] zuckeybytes=stringToBytes(zuckey);
+                            encryptkey=Sm2Enc(zuckeybytes,keyEncryptKey);
+                        }else {
+                            System.out.println("请检查对称加密配置!!!");
+                        }
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
@@ -207,7 +238,14 @@ public class JsonUtils {
                     // 使用RSA算法将随机生成的AESkey加密
                     String encryptkey = null;
                     try {
-                        encryptkey = Sm2Enc(sm4key,keyEncryptKey);
+                        if (encalg == 0) {
+                            encryptkey = Sm2Enc(sm4key,keyEncryptKey);
+                        }else if(encalg==1){
+                            byte[] zuckeybytes=stringToBytes(zuckey);
+                            encryptkey=Sm2Enc(zuckeybytes,keyEncryptKey);
+                        }else {
+                            System.out.println("请检查对称加密配置!!!");
+                        }
 //                        System.out.println(encryptkey);
                     } catch (Exception e) {
                         e.printStackTrace();
@@ -267,7 +305,7 @@ public class JsonUtils {
      * @param nodeList 入参
      * @return 结果
      */
-    public Object GetAesJToken(Object object, List<String> nodeList) throws NoSuchPaddingException, InvalidAlgorithmParameterException, NoSuchAlgorithmException, IllegalBlockSizeException, BadPaddingException, NoSuchProviderException, InvalidKeyException {
+    public Object GetAesJToken(Object object, List<String> nodeList) throws NoSuchPaddingException, InvalidAlgorithmParameterException, NoSuchAlgorithmException, IllegalBlockSizeException, BadPaddingException, NoSuchProviderException, InvalidKeyException, UnsupportedEncodingException {
 
 
         // 如果为空，直接返回
@@ -390,7 +428,7 @@ public class JsonUtils {
      * @param node   入参
      * @return 结果
      */
-    private Object JsonNodeToAes(Object object, String node) throws NoSuchPaddingException, InvalidKeyException, NoSuchAlgorithmException, IllegalBlockSizeException, BadPaddingException, NoSuchProviderException, InvalidAlgorithmParameterException {
+    private Object JsonNodeToAes(Object object, String node) throws NoSuchPaddingException, InvalidKeyException, NoSuchAlgorithmException, IllegalBlockSizeException, BadPaddingException, NoSuchProviderException, InvalidAlgorithmParameterException, UnsupportedEncodingException {
         if (object == null) return object;
         if (JSONValidator.from(object.toString()).getType()==JSONValidator.Type.Object
                // JSON.isValidObject(object.toString())

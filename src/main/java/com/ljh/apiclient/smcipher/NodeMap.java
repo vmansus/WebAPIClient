@@ -1,53 +1,26 @@
 package com.ljh.apiclient.smcipher;
 
+import com.ljh.apiclient.configeditor.CryptoConfigUtils;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.stereotype.Component;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-@EnableConfigurationProperties(com.ljh.apiclient.smcipher.NodesConfig.class)
-@Component
+//@EnableConfigurationProperties(com.ljh.apiclient.smcipher.NodesConfig.class)
+//@Component
 public class NodeMap {
 
 
 //    @Autowired
 //    private NodesConfig NodesConfig;
-    private com.ljh.apiclient.smcipher.NodesConfig nodesConfig = com.ljh.apiclient.smcipher.BeanUtils.getBean(com.ljh.apiclient.smcipher.NodesConfig.class);
+//    private com.ljh.apiclient.smcipher.NodesConfig nodesConfig = com.ljh.apiclient.smcipher.BeanUtils.getBean(com.ljh.apiclient.smcipher.NodesConfig.class);
+    CryptoConfigUtils cryptoConfigUtils=new CryptoConfigUtils();
 
-    public Map<String, List<String>> encryptNodeMap(){
-        List<String> lists=nodesConfig.getEncryptlist();
-        Map<String, List<String>> Map = new HashMap<String, List<String>>(){
-            {
-                put("defult",  lists);
-            }
-        };
-        return Map;
-    }
-
-    public Map<String, List<String>> formencryptNodeMap(){
-        List<String> lists=nodesConfig.getFormenc();
-        Map<String, List<String>> Map = new HashMap<String, List<String>>(){
-            {
-                put("defult",  lists);
-            }
-        };
-        return Map;
-    }
-
-    public Map<String, List<String>> reencNodeMap(){
-        List<String> lists=nodesConfig.getReenc();
-        Map<String, List<String>> Map = new HashMap<String, List<String>>(){
-            {
-                put("defult",  lists);
-            }
-        };
-        return Map;
-    }
-
-    public Map<String, List<String>> formreencNodeMap(){
-        List<String> lists=nodesConfig.getFormreenc();
+    public Map<String, List<String>> encryptNodeMap() throws IOException {
+        List<String> lists=cryptoConfigUtils.getResponseEncParms();
         Map<String, List<String>> Map = new HashMap<String, List<String>>(){
             {
                 put("defult",  lists);
@@ -57,8 +30,9 @@ public class NodeMap {
     }
 
 
-    public Map<String, List<String>> signNodeMap(){
-        List<String> lists=nodesConfig.getSignlist();
+
+    public Map<String, List<String>> reencNodeMap() throws IOException {
+        List<String> lists=cryptoConfigUtils.getRequestEncParms();
         Map<String, List<String>> Map = new HashMap<String, List<String>>(){
             {
                 put("defult",  lists);
@@ -67,8 +41,12 @@ public class NodeMap {
         return Map;
     }
 
-    public Map<String, List<String>> formsignNodeMap(){
-        List<String> lists=nodesConfig.getFormsign();
+
+
+
+
+    public Map<String, List<String>> resignNodeMap() throws IOException {
+        List<String> lists=cryptoConfigUtils.getRequestSignParms();
         Map<String, List<String>> Map = new HashMap<String, List<String>>(){
             {
                 put("defult",  lists);
@@ -77,45 +55,14 @@ public class NodeMap {
         return Map;
     }
 
-    public Map<String, List<String>> resignNodeMap(){
-        List<String> lists=nodesConfig.getResign();
-        Map<String, List<String>> Map = new HashMap<String, List<String>>(){
-            {
-                put("defult",  lists);
-            }
-        };
-        return Map;
-    }
 
-    public Map<String, List<String>> formresignNodeMap(){
-        List<String> lists=nodesConfig.getFormresign();
-        Map<String, List<String>> Map = new HashMap<String, List<String>>(){
-            {
-                put("defult",  lists);
-            }
-        };
-        return Map;
-    }
 
-    public List<String> signNodelist(){
-        List<String> lists=nodesConfig.getSignlist();
+    public List<String> signNodelist() throws IOException {
+        List<String> lists=cryptoConfigUtils.getResponseSignParms();
         return lists;
     }
 
-    public List<String> formsignNodelist(){
-        List<String> lists=nodesConfig.getFormsign();
-        return lists;
-    }
 
-    public List<String> resignlist(){
-        List<String> lists=nodesConfig.getReenc();
-        return lists;
-    }
-
-    public List<String> formresignlist(){
-        List<String> lists=nodesConfig.getFormreenc();
-        return lists;
-    }
 
 //    public int workmodenum(){
 //        int num=nodesConfig.getWorkmode();

@@ -3,10 +3,12 @@ package com.ljh.apiclient.smcipher;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.serializer.SerializerFeature;
+import com.ljh.apiclient.configeditor.CryptoConfigUtils;
 import com.ljh.apiclient.gmhelper.SM2Util;
 import com.ljh.apiclient.gmhelper.SM4Util;
 import com.ljh.apiclient.gmhelper.cert.SM2CertUtil;
 import com.ljh.apiclient.gmhelper.cert.SM2X509CertMaker;
+import com.ljh.apiclient.streamcipher.BCZuc;
 import org.bouncycastle.crypto.InvalidCipherTextException;
 import org.bouncycastle.jcajce.provider.asymmetric.ec.BCECPrivateKey;
 import org.bouncycastle.jcajce.provider.asymmetric.ec.BCECPublicKey;
@@ -16,6 +18,7 @@ import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.nio.file.Files;
@@ -33,7 +36,13 @@ public class JsonAsWholeDecUtils {
     }
     private static final char[] TEST_P12_PASSWD="12345678".toCharArray();
     private static final String TEST_P12_FILENAME="D:\\githuba\\apiclient\\src\\main\\resources\\clientkeystore.p12";
+    CryptoConfigUtils cryptoConfigUtils=new CryptoConfigUtils();
+    int encalg=cryptoConfigUtils.getEncAlg();
+    String zuckey=null;
     byte[] sm4key = null;
+
+    public JsonAsWholeDecUtils() throws IOException {
+    }
 
     public static byte[] Sm2Dec(String text, PrivateKey privateKey) throws InvalidCipherTextException {
         byte[] aa= Base64.getDecoder().decode(stringToBytes(text));
@@ -41,11 +50,19 @@ public class JsonAsWholeDecUtils {
         return decryptdata;
     }
 
-    public String stringDecrypt(String text) throws BadPaddingException, NoSuchPaddingException, InvalidAlgorithmParameterException, NoSuchAlgorithmException, IllegalBlockSizeException, NoSuchProviderException, InvalidKeyException {
-        byte[] cipherdata=stringToBytes(text);
-        byte[] iv=Base64.getDecoder().decode(stringToBytes("LvbTKayS1A2NFFBjaPvkJg=="));
-        byte[] decryptedData= SM4Util.decrypt_CBC_Padding(sm4key,iv,Base64.getDecoder().decode(cipherdata));
-        return bytesToString(decryptedData);
+    public String stringDecrypt(String text) throws BadPaddingException, NoSuchPaddingException, InvalidAlgorithmParameterException, NoSuchAlgorithmException, IllegalBlockSizeException, NoSuchProviderException, InvalidKeyException, UnsupportedEncodingException {
+        if(encalg==0){
+            byte[] cipherdata=stringToBytes(text);
+            byte[] iv=Base64.getDecoder().decode(stringToBytes("LvbTKayS1A2NFFBjaPvkJg=="));
+            byte[] decryptedData= SM4Util.decrypt_CBC_Padding(sm4key,iv,Base64.getDecoder().decode(cipherdata));
+            return bytesToString(decryptedData);
+        }else if(encalg==1){
+            String res=new BCZuc().stringDecCipher(text,zuckey);
+            return res;
+        }else {
+            System.out.println("请检查对称加密配置!!!");
+            return null;
+        }
     }
 
     public boolean validate(String text, String signaturevalue, X509Certificate cert) throws Exception {
@@ -205,7 +222,13 @@ public class JsonAsWholeDecUtils {
         byte[] thekey = null;
         try {
             thekey= Sm2Dec(encryptkey,privateKey);
-            this.sm4key=thekey;
+            if (encalg==0){
+                this.sm4key=thekey;
+            }else if(encalg==1){
+                this.zuckey=bytesToString(thekey);
+            }else {
+                System.out.println("请检查对称加密配置!!!");
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -229,7 +252,13 @@ public class JsonAsWholeDecUtils {
         byte[] thekey = null;
         try {
             thekey= Sm2Dec(encryptkey,privateKey);
-            this.sm4key=thekey;
+            if (encalg==0){
+                this.sm4key=thekey;
+            }else if(encalg==1){
+                this.zuckey=bytesToString(thekey);
+            }else {
+                System.out.println("请检查对称加密配置!!!");
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }

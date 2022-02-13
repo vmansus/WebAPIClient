@@ -20,9 +20,9 @@ import org.springframework.test.context.web.WebAppConfiguration;
 
 import java.io.IOException;
 
-@RunWith(SpringRunner.class)
-@SpringBootTest
-@WebAppConfiguration
+//@RunWith(SpringRunner.class)
+//@SpringBootTest
+//@WebAppConfiguration
 public class TestPostJson {
 
 

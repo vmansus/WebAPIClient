@@ -1,5 +1,6 @@
 package com.ljh.apiclient.smcipher;
 
+import com.ljh.apiclient.configeditor.CryptoConfigUtils;
 import io.swagger.models.auth.In;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.springframework.beans.factory.annotation.Value;
@@ -39,11 +40,14 @@ public class RequestHandler {
         keyname=cert.getSubjectDN().toString();
 
 
-        Properties properties=new Properties();
-        BufferedReader bufferedReader=new BufferedReader(new FileReader("D:\\githuba\\apiclient\\src\\main\\resources\\application.properties"));
-        properties.load(bufferedReader);
-        int mode= Integer.parseInt(properties.getProperty("workmode"));
-        int isWhole= Integer.parseInt(properties.getProperty("isWhole"));
+//        Properties properties=new Properties();
+//        BufferedReader bufferedReader=new BufferedReader(new FileReader("D:\\githuba\\apiclient\\src\\main\\resources\\application.properties"));
+//        properties.load(bufferedReader);
+//        int mode= Integer.parseInt(properties.getProperty("workmode"));
+//        int isWhole= Integer.parseInt(properties.getProperty("isWhole"));
+        CryptoConfigUtils cryptoConfigUtils=new CryptoConfigUtils();
+        int mode= cryptoConfigUtils.getWorkMode();
+        int isWhole= cryptoConfigUtils.getIsWhole();
 
         if (isWhole==0){
             if(mode==0){
@@ -69,11 +73,14 @@ public class RequestHandler {
 
 
     public String decResponse(String responseBody) throws Exception {
-        Properties properties=new Properties();
-        BufferedReader bufferedReader=new BufferedReader(new FileReader("D:\\githuba\\apiclient\\src\\main\\resources\\application.properties"));
-        properties.load(bufferedReader);
-        int mode= Integer.parseInt(properties.getProperty("workmode"));
-        int isWhole= Integer.parseInt(properties.getProperty("isWhole"));
+//        Properties properties=new Properties();
+//        BufferedReader bufferedReader=new BufferedReader(new FileReader("D:\\githuba\\apiclient\\src\\main\\resources\\application.properties"));
+//        properties.load(bufferedReader);
+//        int mode= Integer.parseInt(properties.getProperty("workmode"));
+//        int isWhole= Integer.parseInt(properties.getProperty("isWhole"));
+        CryptoConfigUtils cryptoConfigUtils=new CryptoConfigUtils();
+        int mode= cryptoConfigUtils.getWorkMode();
+        int isWhole= cryptoConfigUtils.getIsWhole();
 
         if (isWhole==0){
             if(mode==0){
