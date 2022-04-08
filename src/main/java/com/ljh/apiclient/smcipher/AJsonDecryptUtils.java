@@ -31,12 +31,12 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.security.*;
-import java.security.cert.*;
 import java.security.cert.Certificate;
+import java.security.cert.*;
 import java.util.*;
 
 @Component
-public class JsonDecryptUtils {
+public class AJsonDecryptUtils {
 
     static {
         Security.removeProvider("SunEC");
@@ -61,7 +61,7 @@ public class JsonDecryptUtils {
     List<String> signNodelist=nodeMap.signNodelist();
     public Map<String, Object> signvaluemap=new HashMap<>();
 
-    public JsonDecryptUtils() throws IOException, URISyntaxException {
+    public AJsonDecryptUtils() throws IOException, URISyntaxException {
     }
 
 
@@ -82,19 +82,19 @@ public class JsonDecryptUtils {
     }
 
 
-    public PrivateKey getPrivateKey(String keyname) throws Exception{
+    public PrivateKey getPrivateKey(String keystoretype,char[] password,String dest,String keyname) throws Exception{
         PrivateKey privateKey = null;
-        KeyStore ks=KeyStore.getInstance("PKCS12","BC");
-        try(InputStream is= Files.newInputStream(Paths.get(TEST_P12_FILENAME), StandardOpenOption.READ)){
-            ks.load(is,TEST_P12_PASSWD);
+        KeyStore ks=KeyStore.getInstance(keystoretype,"BC");
+        try(InputStream is= Files.newInputStream(Paths.get(dest), StandardOpenOption.READ)){
+            ks.load(is,password);
         }
         Enumeration<String> alias=ks.aliases();
         while (alias.hasMoreElements()){
             String aliass=alias.nextElement();
-            java.security.cert.Certificate cert1=ks.getCertificateChain(aliass)[0];
+            Certificate cert1=ks.getCertificateChain(aliass)[0];
             X509Certificate cert= (X509Certificate) cert1;
-            if(cert.getSubjectDN().toString().equals(keyname)&&ks.getKey(aliass,TEST_P12_PASSWD)!=null){
-                privateKey=(PrivateKey)ks.getKey(aliass,TEST_P12_PASSWD);
+            if(cert.getSubjectDN().toString().equals(keyname)&&ks.getKey(aliass,password)!=null){
+                privateKey=(PrivateKey)ks.getKey(aliass,password);
                 break;
             }
         }
@@ -105,7 +105,7 @@ public class JsonDecryptUtils {
 
 
 
-    public String jsonDecrypt(String json) throws Exception{
+    public String jsonDecrypt(String json,String keystoretype,char[] password,String dest) throws Exception{
 
 
 //        PrivateKey privateKey= (PrivateKey) ks.getKey("server cert",TEST_P12_PASSWD);
@@ -147,7 +147,7 @@ public class JsonDecryptUtils {
                 final X509Certificate x509Certificate=(X509Certificate)sortedChain[0];
 
 
-                PrivateKey privateKey=getPrivateKey(KeyName);
+                PrivateKey privateKey=getPrivateKey(keystoretype,password,dest,KeyName);
                 Map<Object,Object>  signature= (Map<Object, Object>) jsonObject.get("Signature");
                 jsonObject.remove("Signature");
                 jsonObject.remove("Certs");
@@ -217,7 +217,7 @@ public class JsonDecryptUtils {
 
     }
 
-    public String jsonDecryptmode1(String json) throws Exception {
+    public String jsonDecryptmode1(String json,String keystoretype,char[] password,String dest) throws Exception {
         boolean checksign=true;
         String json2 = "";
         String jsonStr="";
@@ -226,7 +226,7 @@ public class JsonDecryptUtils {
                 JSONObject jsonObject = JSON.parseObject(json);
                 String encryptkey=jsonObject.getString("Encrypted_Key");
                 String KeyName=jsonObject.getString("KeyName");
-                PrivateKey privateKey=getPrivateKey(KeyName);
+                PrivateKey privateKey=getPrivateKey(keystoretype,password,dest,KeyName);
                 String json1=jsonObject.toJSONString();
                 // 使用SM2算法将随机生成的SM4key解密
                 byte[] thekey = null;

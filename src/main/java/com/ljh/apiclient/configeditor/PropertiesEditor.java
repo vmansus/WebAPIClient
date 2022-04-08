@@ -9,6 +9,9 @@ import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.*;
+import java.net.URISyntaxException;
+import java.net.URL;
+import java.nio.file.Paths;
 import java.util.Properties;
 @SuppressWarnings("serial")
 public class PropertiesEditor extends JPanel {
@@ -26,13 +29,13 @@ public class PropertiesEditor extends JPanel {
 	String iswholemode;
 	String algmode;
 
-	public PropertiesEditor(PropertiesTreeTableModel treeTableModel) throws IOException {
+	public PropertiesEditor(PropertiesTreeTableModel treeTableModel) throws IOException, URISyntaxException {
 
 		setLayout(new GridBagLayout());
 
 		this.treeTableModel = treeTableModel;
 		treeTable = new PropertiesTreeTable(treeTableModel.getConfig(), treeTableModel);
-
+		treeTable.setFont(new Font("宋体",Font.PLAIN, 16));
 		treeTable.addTreeSelectionListener(e -> updateButtons());
 
 		// clear the selection, when clicking on an empty area of the table;
@@ -95,7 +98,7 @@ public class PropertiesEditor extends JPanel {
 //		System.out.println("1111");
 	}
 
-	private Component creatMultiButtonGroups() throws IOException{
+	private Component creatMultiButtonGroups() throws IOException, URISyntaxException {
 		JPanel buttonPanel = new JPanel();
 		buttonPanel.setLayout(new GridLayout(3,1));
 		String wmode=readPropStrs("workmode");
@@ -279,6 +282,10 @@ public class PropertiesEditor extends JPanel {
 					.replace("响应加密字段","\"响应加密字段\"")
 					.replace("响应签名字段","\"响应签名字段\"")
 					.replace("请求签名字段","\"请求签名字段\"")
+					.replace("证书库类型","\"证书库类型\"")
+					.replace("证书库密码","\"证书库密码\"")
+					.replace("证书库路径","\"证书库路径\"")
+					.replace("\\","\\\\")
 					.replace("[","\"")
 					.replace("]","\"");
 //			System.out.println(ss);
@@ -288,6 +295,9 @@ public class PropertiesEditor extends JPanel {
 			String str2= (String) jsonObject.get("请求签名字段");
 			String str3= (String) jsonObject.get("响应加密字段");
 			String str4= (String) jsonObject.get("响应签名字段");
+			String str5= (String) jsonObject.get("证书库类型");
+			String str6= (String) jsonObject.get("证书库密码");
+			String str7= (String) jsonObject.get("证书库路径");
 			String[] strings1=str1.split(",");
 			String[] strings2=str2.split(",");
 			String[] strings3=str3.split(",");
@@ -321,13 +331,16 @@ public class PropertiesEditor extends JPanel {
 				writePropstrs("requestSign",sb2.toString());
 				writePropstrs("responseEnc",sb3.toString());
 				writePropstrs("responseSign",sb4.toString());
-			} catch (IOException e) {
+				writePropstrs("keystoreType",str5);
+				writePropstrs("keystorePassword",str6);
+				writePropstrs("keystoreDest",str7);
+			} catch (IOException | URISyntaxException e) {
 				e.printStackTrace();
 			}
 			if(workmode!=null&&workmode.length()>0){
 				try {
 					writePropstrs("workmode",workmode);
-				} catch (IOException e) {
+				} catch (IOException | URISyntaxException e) {
 					e.printStackTrace();
 				}
 			}
@@ -335,7 +348,7 @@ public class PropertiesEditor extends JPanel {
 			if(iswholemode!=null&&iswholemode.length()>0){
 				try {
 					writePropstrs("isWhole",iswholemode);
-				} catch (IOException e) {
+				} catch (IOException | URISyntaxException e) {
 					e.printStackTrace();
 				}
 			}
@@ -343,7 +356,7 @@ public class PropertiesEditor extends JPanel {
 			if(algmode!=null&&algmode.length()>0){
 				try {
 					writePropstrs("encAlg",algmode);
-				} catch (IOException e) {
+				} catch (IOException | URISyntaxException e) {
 					e.printStackTrace();
 				}
 			}
@@ -368,24 +381,40 @@ public class PropertiesEditor extends JPanel {
 		return treeTable;
 	}
 
-	public static Properties getProperties() throws IOException {
+	public Properties getProperties() throws IOException, URISyntaxException {
+		URL apiconfigurl = this.getClass().getClassLoader().getResource("ApiConfig.properties");
+		File apiconfigfile = Paths.get(apiconfigurl.toURI()).toFile();
+		Reader reader=new FileReader(apiconfigfile);
+		Properties properties2=new Properties();
+		properties2.load(reader);
+		String path=properties2.getProperty("configFilePath");
+
 		Properties properties=new Properties();
-		BufferedReader bufferedReader=new BufferedReader(new FileReader("D:\\githuba\\apiclient\\src\\main\\resources\\CryptoConfig.properties"));
+		BufferedReader bufferedReader=new BufferedReader(new FileReader(path+"\\CryptoConfig.properties"));
 		properties.load(bufferedReader);
 //        int mode= Integer.parseInt(properties.getProperty("workmode"));
 		return properties;
 	}
 
-	public String readPropStrs(String propname) throws IOException {
+	public String readPropStrs(String propname) throws IOException, URISyntaxException {
 		Properties properties=getProperties();
 		String res=properties.getProperty(propname);
 		return res;
 	}
 
-	public void writePropstrs(String propname ,String value) throws IOException{
+	public void writePropstrs(String propname ,String value) throws IOException, URISyntaxException {
+		URL apiconfigurl = this.getClass().getClassLoader().getResource("ApiConfig.properties");
+		File apiconfigfile = Paths.get(apiconfigurl.toURI()).toFile();
+		Reader reader=new FileReader(apiconfigfile);
+		Properties properties2=new Properties();
+		properties2.load(reader);
+		String path=properties2.getProperty("configFilePath");
+
+
 		Properties properties=getProperties();
 		properties.setProperty(propname,value);
-		File file=new File("D:\\githuba\\apiclient\\src\\main\\resources\\CryptoConfig.properties");
+//		File file=new File("D:\\mycode\\grpc_java_project\\grpcServer\\src\\main\\resources\\CryptoConfig.properties");
+		File file=new File(path+"\\CryptoConfig.properties");
 		FileWriter fileWriter=new FileWriter(file);
 		properties.store(fileWriter,"Change "+propname+" to "+value);
 	}

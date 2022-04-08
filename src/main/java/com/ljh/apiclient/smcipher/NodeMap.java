@@ -5,6 +5,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -19,7 +20,7 @@ public class NodeMap {
 //    private com.ljh.apiclient.smcipher.NodesConfig nodesConfig = com.ljh.apiclient.smcipher.BeanUtils.getBean(com.ljh.apiclient.smcipher.NodesConfig.class);
     CryptoConfigUtils cryptoConfigUtils=new CryptoConfigUtils();
 
-    public Map<String, List<String>> encryptNodeMap() throws IOException {
+    public Map<String, List<String>> encryptNodeMap() throws IOException, URISyntaxException {
         List<String> lists=cryptoConfigUtils.getResponseEncParms();
         Map<String, List<String>> Map = new HashMap<String, List<String>>(){
             {
@@ -31,7 +32,7 @@ public class NodeMap {
 
 
 
-    public Map<String, List<String>> reencNodeMap() throws IOException {
+    public Map<String, List<String>> reencNodeMap() throws IOException, URISyntaxException {
         List<String> lists=cryptoConfigUtils.getRequestEncParms();
         Map<String, List<String>> Map = new HashMap<String, List<String>>(){
             {
@@ -45,7 +46,7 @@ public class NodeMap {
 
 
 
-    public Map<String, List<String>> resignNodeMap() throws IOException {
+    public Map<String, List<String>> resignNodeMap() throws IOException, URISyntaxException {
         List<String> lists=cryptoConfigUtils.getRequestSignParms();
         Map<String, List<String>> Map = new HashMap<String, List<String>>(){
             {
@@ -57,7 +58,7 @@ public class NodeMap {
 
 
 
-    public List<String> signNodelist() throws IOException {
+    public List<String> signNodelist() throws IOException, URISyntaxException {
         List<String> lists=cryptoConfigUtils.getResponseSignParms();
         return lists;
     }

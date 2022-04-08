@@ -26,11 +26,11 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.security.*;
-import java.security.cert.*;
 import java.security.cert.Certificate;
+import java.security.cert.*;
 import java.util.*;
 
-public class JsonAsWholeDecUtils {
+public class AJsonAsWholeDecUtils {
     static {
         Security.removeProvider("SunEC");
         Security.addProvider(new BouncyCastleProvider());
@@ -42,7 +42,7 @@ public class JsonAsWholeDecUtils {
     String zuckey=null;
     byte[] sm4key = null;
 
-    public JsonAsWholeDecUtils() throws IOException, URISyntaxException {
+    public AJsonAsWholeDecUtils() throws IOException, URISyntaxException {
     }
 
     public static byte[] Sm2Dec(String text, PrivateKey privateKey) throws InvalidCipherTextException {
@@ -76,19 +76,19 @@ public class JsonAsWholeDecUtils {
     }
 
 
-    public PrivateKey getPrivateKey(String keyname) throws Exception{
+    public PrivateKey getPrivateKey(String keystoretype,char[] password,String dest,String keyname) throws Exception{
         PrivateKey privateKey = null;
-        KeyStore ks=KeyStore.getInstance("PKCS12","BC");
-        try(InputStream is= Files.newInputStream(Paths.get(TEST_P12_FILENAME), StandardOpenOption.READ)){
-            ks.load(is,TEST_P12_PASSWD);
+        KeyStore ks=KeyStore.getInstance(keystoretype,"BC");
+        try(InputStream is= Files.newInputStream(Paths.get(dest), StandardOpenOption.READ)){
+            ks.load(is,password);
         }
         Enumeration<String> alias=ks.aliases();
         while (alias.hasMoreElements()){
             String aliass=alias.nextElement();
-            java.security.cert.Certificate cert1=ks.getCertificateChain(aliass)[0];
+            Certificate cert1=ks.getCertificateChain(aliass)[0];
             X509Certificate cert= (X509Certificate) cert1;
-            if(cert.getSubjectDN().toString().equals(keyname)&&ks.getKey(aliass,TEST_P12_PASSWD)!=null){
-                privateKey=(PrivateKey)ks.getKey(aliass,TEST_P12_PASSWD);
+            if(cert.getSubjectDN().toString().equals(keyname)&&ks.getKey(aliass,password)!=null){
+                privateKey=(PrivateKey)ks.getKey(aliass,password);
                 break;
             }
         }
@@ -186,7 +186,7 @@ public class JsonAsWholeDecUtils {
         return isValidCertChain;
     }
 
-    public String jsonDecrypt(String json) throws Exception{
+    public String jsonDecrypt(String json,String keystoretype,char[] password,String dest) throws Exception{
         boolean checksign=true;
         JSONObject jsonObject = JSON.parseObject(json);
         String encryptkey=jsonObject.getString("Encrypted_Key");
@@ -219,7 +219,7 @@ public class JsonAsWholeDecUtils {
             System.out.println("证书链验证失败!!!");
         }
         final X509Certificate x509Certificate=(X509Certificate)sortedChain[0];
-        PrivateKey privateKey=getPrivateKey(KeyName);
+        PrivateKey privateKey=getPrivateKey(keystoretype,password,dest,KeyName);
         byte[] thekey = null;
         try {
             thekey= Sm2Dec(encryptkey,privateKey);
@@ -244,12 +244,12 @@ public class JsonAsWholeDecUtils {
         return temp;
     }
 
-    public String jsonDecrypt1(String json) throws Exception{
+    public String jsonDecrypt1(String json,String keystoretype,char[] password,String dest) throws Exception{
         JSONObject jsonObject = JSON.parseObject(json);
         String encryptkey=jsonObject.getString("Encrypted_Key");
         String KeyName=jsonObject.getString("KeyName");
         String encryptedText=jsonObject.getString("Protected");
-        PrivateKey privateKey=getPrivateKey(KeyName);
+        PrivateKey privateKey=getPrivateKey(keystoretype,password,dest,KeyName);
         byte[] thekey = null;
         try {
             thekey= Sm2Dec(encryptkey,privateKey);

@@ -15,9 +15,7 @@ import org.apache.commons.lang.StringUtils;
 import org.bouncycastle.crypto.InvalidCipherTextException;
 import org.bouncycastle.jcajce.provider.asymmetric.ec.BCECPrivateKey;
 import org.bouncycastle.jcajce.provider.asymmetric.ec.BCECPublicKey;
-import org.bouncycastle.jce.interfaces.ECPublicKey;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
-import org.springframework.stereotype.Component;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
@@ -35,23 +33,23 @@ import java.security.cert.X509Certificate;
 import java.util.*;
 
 //@Component
-public class JsonUtils {
+public class AJsonUtils {
     static {
         Security.removeProvider("SunEC");
         Security.addProvider(new BouncyCastleProvider());
     }
 
-    private static final char[] TEST_P12_PASSWD="12345678".toCharArray();
-    private static final String TEST_P12_FILENAME="D:\\githuba\\apiclient\\src\\main\\resources\\clientkeystore.p12";
-    private static JsonUtils instance=null;
+//    private static final char[] TEST_P12_PASSWD="12345678".toCharArray();
+//    private static final String TEST_P12_FILENAME="D:\\githuba\\apiclient\\src\\main\\resources\\clientkeystore.p12";
+    private static AJsonUtils instance=null;
     private Key keyEncryptKey=null;
 
-    public JsonUtils(X509Certificate certificate) throws NoSuchProviderException, NoSuchAlgorithmException, IOException, URISyntaxException {
+    public AJsonUtils(X509Certificate certificate) throws NoSuchProviderException, NoSuchAlgorithmException, IOException, URISyntaxException {
         keyEncryptKey=certificate.getPublicKey();
     }
 
-    public  static  JsonUtils getInstance(X509Certificate certificate) throws Exception{
-        if (instance==null)return new JsonUtils(certificate);
+    public  static AJsonUtils getInstance(X509Certificate certificate) throws Exception{
+        if (instance==null)return new AJsonUtils(certificate);
         else return instance;
     }
 
@@ -62,7 +60,7 @@ public class JsonUtils {
 
 
 
-    com.ljh.apiclient.smcipher.NodeMap nodeMap=new com.ljh.apiclient.smcipher.NodeMap();
+    NodeMap nodeMap=new NodeMap();
     Map<String, List<String>> encryptNodeMap=nodeMap.reencNodeMap();
     Map<String, List<String>> signNodeMap=nodeMap.resignNodeMap();
     public Map<String, Object> signedmap=new HashMap<>();
@@ -85,13 +83,13 @@ public class JsonUtils {
 
     }
 
-    public String stringSign(String text, String alias) throws Exception {
-        KeyStore ks = KeyStore.getInstance("PKCS12", "BC");
-        try (InputStream is = Files.newInputStream(Paths.get(TEST_P12_FILENAME),
+    public String stringSign(String text, String keystoretype,char[] password,String dest,String alias) throws Exception {
+        KeyStore ks = KeyStore.getInstance(keystoretype, "BC");
+        try (InputStream is = Files.newInputStream(Paths.get(dest),
                 StandardOpenOption.READ)) {
-            ks.load(is, TEST_P12_PASSWD);
+            ks.load(is, password);
         }
-        PrivateKey privateKey=(BCECPrivateKey)ks.getKey(alias,TEST_P12_PASSWD);
+        PrivateKey privateKey=(BCECPrivateKey)ks.getKey(alias,password);
 
         byte[] srcData = text.getBytes();
         Signature sign = Signature.getInstance(SM2X509CertMaker.SIGN_ALGO_SM3WITHSM2, "BC");
@@ -109,11 +107,11 @@ public class JsonUtils {
     }
 
 
-    public Certificate[] getCerts(String alias) throws Exception{
-        KeyStore ks = KeyStore.getInstance("PKCS12", "BC");
-        try (InputStream is = Files.newInputStream(Paths.get(TEST_P12_FILENAME),
+    public Certificate[] getCerts(String keystoretype,char[] password,String dest,String alias) throws Exception{
+        KeyStore ks = KeyStore.getInstance(keystoretype, "BC");
+        try (InputStream is = Files.newInputStream(Paths.get(dest),
                 StandardOpenOption.READ)) {
-            ks.load(is, TEST_P12_PASSWD);
+            ks.load(is, password);
         }
         Certificate[] certificates=ks.getCertificateChain(alias);
         return certificates;
@@ -125,14 +123,14 @@ public class JsonUtils {
      * @param json 入参
      * @return 加密字符串
      */
-    public String  jsonEncrypt(String json,String keyname,String alias) {
+    public String  jsonEncrypt(String json,String keystoretype,char[] password,String dest,String keyname,String alias) {
 
         String json2 = "";
         try {
             if (!StringUtils.isBlank(json)) {
                 for (String key :  encryptNodeMap.keySet()){
 //                    System.out.println(encryptNodeMap.get(key));
-                    GetJsonSign(JSON.parseObject(json.trim()), signNodeMap.get(key),alias);
+                    GetJsonSign(JSON.parseObject(json.trim()),keystoretype,password,dest, signNodeMap.get(key),alias);
                    String  output = GetAesJToken(JSON.parseObject(json.trim()), encryptNodeMap.get(key)).toString();
 
                     Map<String, Object> signature =this.signedmap;
@@ -155,8 +153,8 @@ public class JsonUtils {
                     jsonObject.put("Encrypted_Key",encryptkey);
                     jsonObject.put("KeyName",keyname);
                     JSONObject jsonChainCert=new JSONObject();
-                    for (int i=0;i<getCerts(alias).length;i++){
-                        jsonChainCert.put(String.valueOf(i),bytesToString(Base64.getEncoder().encode(getCerts(alias)[i].getEncoded())));
+                    for (int i=0;i<getCerts(keystoretype,password,dest,alias).length;i++){
+                        jsonChainCert.put(String.valueOf(i),bytesToString(Base64.getEncoder().encode(getCerts(keystoretype,password,dest,alias)[i].getEncoded())));
                     }
 //                    X509Certificate cert= (X509Certificate) getCerts(alias)[0];
                     jsonObject.put("Certs",jsonChainCert);
@@ -186,14 +184,14 @@ public class JsonUtils {
         return json2;
     }
 
-    public String  jsonEncryptmode1(String json,String keyname,String alias) {
+    public String  jsonEncryptmode1(String json,String keystoretype,char[] password,String dest,String keyname) {
 
         String json2 = "";
         try {
             if (!StringUtils.isBlank(json)) {
                 for (String key :  encryptNodeMap.keySet()){
 //                    System.out.println(encryptNodeMap.get(key));
-                    GetJsonSign(JSON.parseObject(json.trim()), signNodeMap.get(key),alias);
+//                    GetJsonSign(JSON.parseObject(json.trim()), keystoretype,password,dest,signNodeMap.get(key),alias);
                     String  output = GetAesJToken(JSON.parseObject(json.trim()), encryptNodeMap.get(key)).toString();
                     String encryptkey = null;
                     try {
@@ -224,14 +222,14 @@ public class JsonUtils {
         return json2;
     }
 
-    public String  jsonEncryptmode2(String json,String keyname,String alias) {
+    public String  jsonEncryptmode2(String json,String keystoretype,char[] password,String dest,String alias) {
 
         String json2 = "";
         try {
             if (!StringUtils.isBlank(json)) {
                 for (String key :  encryptNodeMap.keySet()){
 //                    System.out.println(encryptNodeMap.get(key));
-                    GetJsonSign(JSON.parseObject(json.trim()), signNodeMap.get(key),alias);
+                    GetJsonSign(JSON.parseObject(json.trim()),keystoretype,password,dest,signNodeMap.get(key),alias);
                     //String  output = GetAesJToken(JSON.parseObject(json.trim()), encryptNodeMap.get(key)).toString();
 
                     Map<String, Object> signature =this.signedmap;
@@ -253,8 +251,8 @@ public class JsonUtils {
                     }
                     JSONObject jsonObject = JSON.parseObject(json);
                     JSONObject jsonChainCert=new JSONObject();
-                    for (int i=0;i<getCerts(alias).length;i++){
-                        jsonChainCert.put(String.valueOf(i),bytesToString(Base64.getEncoder().encode(getCerts(alias)[i].getEncoded())));
+                    for (int i=0;i<getCerts(keystoretype,password,dest,alias).length;i++){
+                        jsonChainCert.put(String.valueOf(i),bytesToString(Base64.getEncoder().encode(getCerts(keystoretype,password,dest,alias)[i].getEncoded())));
                     }
                     jsonObject.put("Certs",jsonChainCert);
 //                    X509Certificate cert= (X509Certificate) getCerts(alias)[0];
@@ -364,7 +362,7 @@ public class JsonUtils {
     }
 
 
-    public Object  GetJsonSign(Object object, List<String> nodeList,String alias) throws Exception {
+    public Object  GetJsonSign(Object object, String keystoretype,char[] password,String dest,List<String> nodeList,String alias) throws Exception {
         Map<String, Object> signmap=new HashMap();
         // 如果为空，直接返回
         if (object == null || nodeList.size() == 0) return null;
@@ -385,7 +383,7 @@ public class JsonUtils {
             } else {
                 //object = JsonNodeToAes(object, node);
 
-                object=JsonNodeSign(object, node,alias);
+                object=JsonNodeSign(object, keystoretype,password,dest,node,alias);
 
             }
         }
@@ -400,7 +398,7 @@ public class JsonUtils {
                 ) {
                     var jObject = JSON.parseObject(object.toString());
                     if (jObject.get(key) != null) {
-                        jObject.put(key, GetJsonSign(jObject.get(key), deepLevelNodes.get(key),alias));
+                        jObject.put(key, GetJsonSign(jObject.get(key), keystoretype,password,dest,deepLevelNodes.get(key),alias));
                     }
                     object = jObject;
                 }
@@ -411,7 +409,7 @@ public class JsonUtils {
                     for (int i = 0; i < jArray.size(); i++) {
                         JSONObject curObject = jArray.getJSONObject(i);
                         if (curObject != null && curObject.get(key) != null) {
-                            jArray.set(i, GetJsonSign(curObject.get(key), deepLevelNodes.get(key),alias));
+                            jArray.set(i, GetJsonSign(curObject.get(key),keystoretype,password,dest,deepLevelNodes.get(key),alias));
                         }
                     }
                     object = jArray;
@@ -480,7 +478,7 @@ public class JsonUtils {
      * @param node   入参
      * @return 结果
      */
-    private Object JsonNodeSign(Object object, String node,String alias) throws Exception {
+    private Object JsonNodeSign(Object object,String keystoretype,char[] password,String dest, String node,String alias) throws Exception {
         if (object == null) return null;
 
         if (JSONValidator.from(object.toString()).getType()==JSONValidator.Type.Object
@@ -496,7 +494,7 @@ public class JsonUtils {
                         jArray.set(i, jArray.get(i).toString());
 
                         String tmp=JSONObject.toJSONString(jArray.get(i),SerializerFeature.SortField.MapSortField);
-                        this.signedmap.put(node, stringSign(tmp,alias));
+                        this.signedmap.put(node, stringSign(tmp,keystoretype,password,dest,alias));
 
 //                        this.signedmap.put(node, stringSign(jArray.get(i).toString()));
                     }
@@ -509,7 +507,7 @@ public class JsonUtils {
                     jObject.put(node, jObject.get(node).toString());
 
                     String tmp=JSONObject.toJSONString(jObject.get(node),SerializerFeature.SortField.MapSortField);
-                    this.signedmap.put(node, stringSign(tmp,alias));
+                    this.signedmap.put(node, stringSign(tmp,keystoretype,password,dest,alias));
 
 //                    this.signedmap.put(node, stringSign(jObject.get(node).toString()));
                 }
@@ -523,7 +521,7 @@ public class JsonUtils {
             for (int i = 0; i < jArray.size(); i++) {
                 Object curObject = jArray.getJSONObject(i);
                 if (curObject != null) {
-                    jArray.set(i, JsonNodeSign(curObject, node,alias));
+                    jArray.set(i, JsonNodeSign(curObject,keystoretype,password,dest, node,alias));
                 }
             }
             object = jArray;
@@ -532,7 +530,7 @@ public class JsonUtils {
             object = object.toString();
 
             String tmp=JSONObject.toJSONString(object,SerializerFeature.SortField.MapSortField);
-            this.signedmap.put(node, stringSign(tmp,alias));
+            this.signedmap.put(node, stringSign(tmp,keystoretype,password,dest,alias));
 
 //            this.signedmap.put(node,object.toString());
         }

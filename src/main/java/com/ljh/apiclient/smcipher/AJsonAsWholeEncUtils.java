@@ -28,23 +28,23 @@ import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
 import java.util.Base64;
 
-public class JsonAsWholeEncUtils {
+public class AJsonAsWholeEncUtils {
     static {
         Security.removeProvider("SunEC");
         Security.addProvider(new BouncyCastleProvider());
     }
 
-    private static final char[] TEST_P12_PASSWD="12345678".toCharArray();
-    private static final String TEST_P12_FILENAME="D:\\githuba\\apiclient\\src\\main\\resources\\clientkeystore.p12";
-    private static JsonAsWholeEncUtils instance=null;
+//    private static final char[] TEST_P12_PASSWD="12345678".toCharArray();
+//    private static final String TEST_P12_FILENAME="D:\\githuba\\apiclient\\src\\main\\resources\\clientkeystore.p12";
+    private static AJsonAsWholeEncUtils instance=null;
     private Key keyEncryptKey=null;
 
-    public JsonAsWholeEncUtils(X509Certificate certificate) throws NoSuchProviderException, NoSuchAlgorithmException, IOException, URISyntaxException {
+    public AJsonAsWholeEncUtils(X509Certificate certificate) throws NoSuchProviderException, NoSuchAlgorithmException, IOException, URISyntaxException {
         keyEncryptKey=certificate.getPublicKey();
     }
 
-    public  static  JsonAsWholeEncUtils getInstance(X509Certificate certificate) throws Exception{
-        if (instance==null)return new JsonAsWholeEncUtils(certificate);
+    public  static AJsonAsWholeEncUtils getInstance(X509Certificate certificate) throws Exception{
+        if (instance==null)return new AJsonAsWholeEncUtils(certificate);
         else return instance;
     }
     CryptoConfigUtils cryptoConfigUtils=new CryptoConfigUtils();
@@ -68,13 +68,13 @@ public class JsonAsWholeEncUtils {
         }
     }
 
-    public String stringSign(String text, String alias) throws Exception {
-        KeyStore ks = KeyStore.getInstance("PKCS12", "BC");
-        try (InputStream is = Files.newInputStream(Paths.get(TEST_P12_FILENAME),
+    public String stringSign(String text, String keystoretype,char[] password,String dest,String alias) throws Exception {
+        KeyStore ks = KeyStore.getInstance(keystoretype, "BC");
+        try (InputStream is = Files.newInputStream(Paths.get(dest),
                 StandardOpenOption.READ)) {
-            ks.load(is, TEST_P12_PASSWD);
+            ks.load(is, password);
         }
-        PrivateKey privateKey=(BCECPrivateKey)ks.getKey(alias,TEST_P12_PASSWD);
+        PrivateKey privateKey=(BCECPrivateKey)ks.getKey(alias,password);
 
         byte[] srcData = text.getBytes();
         Signature sign = Signature.getInstance(SM2X509CertMaker.SIGN_ALGO_SM3WITHSM2, "BC");
@@ -92,11 +92,11 @@ public class JsonAsWholeEncUtils {
     }
 
 
-    public java.security.cert.Certificate[] getCerts(String alias) throws Exception{
-        KeyStore ks = KeyStore.getInstance("PKCS12", "BC");
-        try (InputStream is = Files.newInputStream(Paths.get(TEST_P12_FILENAME),
+    public Certificate[] getCerts(String keystoretype,char[] password,String dest,String alias) throws Exception{
+        KeyStore ks = KeyStore.getInstance(keystoretype, "BC");
+        try (InputStream is = Files.newInputStream(Paths.get(dest),
                 StandardOpenOption.READ)) {
-            ks.load(is, TEST_P12_PASSWD);
+            ks.load(is, password);
         }
         Certificate[] certificates=ks.getCertificateChain(alias);
         return certificates;
@@ -123,7 +123,7 @@ public class JsonAsWholeEncUtils {
         return null;
     }
 
-    public String  jsonEncrypt(String json,String keyname,String alias) throws Exception {
+    public String  jsonEncrypt(String json,String keystoretype,char[] password,String dest,String keyname,String alias) throws Exception {
         JSONObject js=JSONObject.parseObject(json);
         String jsstr=JSONObject.toJSONString(js, SerializerFeature.SortField.MapSortField);
         String encryptedJsonString=stringEncrypt(jsstr);
@@ -140,7 +140,7 @@ public class JsonAsWholeEncUtils {
         } catch (Exception e) {
             e.printStackTrace();
         }
-        String signValue=stringSign(jsstr,alias);
+        String signValue=stringSign(jsstr,keystoretype,password,dest,alias);
         JSONObject jsonObject=new JSONObject();
         jsonObject.put("Protected",encryptedJsonString);
         jsonObject.put("Encrypted_Key",encryptkey);
@@ -148,8 +148,8 @@ public class JsonAsWholeEncUtils {
         jsonObject.put("Signature",signValue);
 
         JSONObject jsonChainCert=new JSONObject();
-        for (int i=0;i<getCerts(alias).length;i++){
-            jsonChainCert.put(String.valueOf(i),bytesToString(Base64.getEncoder().encode(getCerts(alias)[i].getEncoded())));
+        for (int i=0;i<getCerts(keystoretype,password,dest,alias).length;i++){
+            jsonChainCert.put(String.valueOf(i),bytesToString(Base64.getEncoder().encode(getCerts(keystoretype,password,dest,alias)[i].getEncoded())));
         }
 //                    X509Certificate cert= (X509Certificate) getCerts(alias)[0];
         jsonObject.put("Certs",jsonChainCert);
@@ -159,7 +159,7 @@ public class JsonAsWholeEncUtils {
 
     }
 
-    public String  jsonEncrypt1(String json,String keyname,String alias) throws Exception {
+    public String  jsonEncrypt1(String json,String keyname) throws Exception {
         String encryptedJsonString=stringEncrypt(json);
         String encryptkey = null;
         try {
@@ -184,16 +184,16 @@ public class JsonAsWholeEncUtils {
 
     }
 
-    public String  jsonEncrypt2(String json,String keyname,String alias) throws Exception {
+    public String  jsonEncrypt2(String json,String keystoretype,char[] password,String dest,String alias) throws Exception {
         JSONObject js=JSONObject.parseObject(json);
         String jsstr=JSONObject.toJSONString(js, SerializerFeature.SortField.MapSortField);
-        String signValue=stringSign(jsstr,alias);
+        String signValue=stringSign(jsstr,keystoretype,password,dest,alias);
         JSONObject jsonObject=new JSONObject();
         jsonObject.put("Signature",signValue);
         jsonObject.put("Protected",js);
         JSONObject jsonChainCert=new JSONObject();
-        for (int i=0;i<getCerts(alias).length;i++){
-            jsonChainCert.put(String.valueOf(i),bytesToString(Base64.getEncoder().encode(getCerts(alias)[i].getEncoded())));
+        for (int i=0;i<getCerts(keystoretype,password,dest,alias).length;i++){
+            jsonChainCert.put(String.valueOf(i),bytesToString(Base64.getEncoder().encode(getCerts(keystoretype,password,dest,alias)[i].getEncoded())));
         }
         jsonObject.put("Certs",jsonChainCert);
 
